@@ -70,6 +70,15 @@
             color: #a0aec0;
             cursor: not-allowed;
         }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .button-group button {
+            flex: 1;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -95,11 +104,12 @@
     <input type="time" id="timeInput2" value="12:00">
     
     <button id="sendBtn" class="btn-send" disabled>えさやり時刻を送信</button>
+
+    <div class="button-group">
+        <button id="esayari" class="btn-send" disabled>えさやり</button>
+        <button id="teishi" class="btn-send" disabled style="background-color: #ed8936;">強制停止</button>
+    </div>
 </div>
-
-<button id="esayari" class="btn-send" disabled>えさやり</button>
-
-<button id="teishi" class="btn-send" disabled>強制停止</button>
 
 <script>
     let port;

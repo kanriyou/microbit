@@ -81,17 +81,15 @@
     <button id="connectBtn" class="btn-connect">micro:bit と接続</button>
     
     
- <div class="display-panel clearfix">
+    <div class="display-panel clearfix">
         <span>micro:bitの現在時刻:</span>
         <span id="currentTimeDisp" class="display-value">--:--</span>
     </div>
 
-　　<label for="timeInput1" style="display:block; text-align:left; font-size:0.9em; color:#4a5568; margin-bottom: 4px;">設定時刻:</label>
+    <label for="timeInput1" style="display:block; text-align:left; font-size:0.9em; color:#4a5568; margin-bottom: 4px;">設定時刻:</label>
     <input type="time" id="timeInput1" value="08:00">
     
-　
-    
-<hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
     
     <label for="timeInput2" style="display:block; text-align:left; font-size:0.9em; color:#718096;">送信する時刻を選択:</label>
     <input type="time" id="timeInput2" value="12:00">
@@ -101,14 +99,13 @@
 
 <button id="esayari" class="btn-send" disabled>えさやり</button>
 
-
 <button id="teishi" class="btn-send" disabled>強制停止</button>
-
-
 
 <script>
     let port;
     let writer;
+    let reader;
+    let keepReading = false;
 
     const connectBtn = document.getElementById('connectBtn');
     const sendBtn = document.getElementById('sendBtn');
@@ -132,12 +129,8 @@
             // micro:bitの一般的な通信速度 115200 でオープン
             await port.open({ baudRate: 115200 });
 
+            // シンプルな方法でwriterを取得
             writer = port.writable.getWriter();
-            
-            // 送信用のストリームを設定
-            const textEncoder = new TextEncoderStream();
-            textEncoder.readable.pipeTo(port.writable);
-            writer = textEncoder.writable.getWriter();
 
             // UI状態の更新
             statusDiv.textContent = "状態: 接続済み";
@@ -147,8 +140,8 @@
             esayari.disabled = false;
             teishi.disabled = false;
             
-　　　　　　　 keepReading = true;
-        readLoop();
+            keepReading = true;
+            readLoop();
 
         } catch (error) {
             console.error("接続エラー:", error);
@@ -172,8 +165,9 @@
         const fourDigitTime = timeVal.replace(':', '');
 
         try {
-            // 改行コード（\n）を付加してシリアル送信（micro:bit側で受信の区切りにしやすくするため）
-            await writer.write(fourDigitTime + '\n');
+            // 改行コード（\n）を付加してシリアル送信
+            const encoder = new TextEncoder();
+            await writer.write(encoder.encode(fourDigitTime + '\n'));
             alert(`送信しました: ${fourDigitTime}`);
         } catch (error) {
             console.error("送信エラー:", error);
@@ -181,13 +175,13 @@
         }
     });
 
-     // えさやりボタンの処理
+    // えさやりボタンの処理
     esayari.addEventListener('click', async () => {
         if (!writer) return;
 
         try {
-            // 改行コード（\n）を付加してシリアル送信（micro:bit側で受信の区切りにしやすくするため）
-            await writer.write('えさやり\n');
+            const encoder = new TextEncoder();
+            await writer.write(encoder.encode('えさやり\n'));
             alert(`送信しました: えさやり`);
         } catch (error) {
             console.error("送信エラー:", error);
@@ -195,13 +189,13 @@
         }
     });
 
-　　  // 強制停止ボタンの処理
+    // 強制停止ボタンの処理
     teishi.addEventListener('click', async () => {
         if (!writer) return;
 
         try {
-            // 改行コード（\n）を付加してシリアル送信（micro:bit側で受信の区切りにしやすくするため）
-            await writer.write('強制停止\n');
+            const encoder = new TextEncoder();
+            await writer.write(encoder.encode('強制停止\n'));
             alert(`送信しました: 強制停止`);
         } catch (error) {
             console.error("送信エラー:", error);
@@ -209,8 +203,7 @@
         }
     });
 
-
-// データ受信を常時監視するループ関数
+    // データ受信を常時監視するループ関数
     async function readLoop() {
         const textDecoder = new TextDecoderStream();
         const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
@@ -257,7 +250,7 @@
         if (num >= 10000) {
             // 【10000以上の場合】10000を引いて現在時刻に表示
             const timeNum = num - 10000;
-            currentTimeDisp.textContent = formatToTimeString(timeNum);
+            document.getElementById('currentTimeDisp').textContent = formatToTimeString(timeNum);
         } else {
             // 【10000未満の場合】設定時刻の欄に上書き表示
             timeInput1.value = formatToTimeString(num);
@@ -272,27 +265,29 @@
         const minutes = str.slice(2, 4);
         return `${hours}:${minutes}`;
     }   
-// 切断処理を修正
-async function disconnect() {
-    keepReading = false;  // ★ 追加
-    if (reader) {
-        reader.releaseLock();
-        reader = null;
-    }
-    if (writer) {
-        writer.releaseLock();
-        writer = null;
-    }
-    if (port) {
-        await port.close();
-        port = null;
-    }
-    statusDiv.textContent = "状態: 未接続";
-    statusDiv.classList.remove('connected');
-    connectBtn.textContent = "micro:bit と接続";
-    sendBtn.disabled = true;
-}
 
+    // 切断処理
+    async function disconnect() {
+        keepReading = false;
+        if (reader) {
+            reader.releaseLock();
+            reader = null;
+        }
+        if (writer) {
+            writer.releaseLock();
+            writer = null;
+        }
+        if (port) {
+            await port.close();
+            port = null;
+        }
+        statusDiv.textContent = "状態: 未接続";
+        statusDiv.classList.remove('connected');
+        connectBtn.textContent = "micro:bit と接続";
+        sendBtn.disabled = true;
+        esayari.disabled = true;
+        teishi.disabled = true;
+    }
 
     // ページが閉じられるときにポートをクローズする
     window.addEventListener('beforeunload', async () => {
@@ -302,3 +297,4 @@ async function disconnect() {
 
 </body>
 </html>
+

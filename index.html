@@ -191,7 +191,7 @@
 
         try {
             const encoder = new TextEncoder();
-            await writer.write(encoder.encode('えさやり\n'));
+            await writer.write(encoder.encode('FEED\n'));
             alert(`送信しました: えさやり`);
         } catch (error) {
             console.error("送信エラー:", error);
@@ -205,7 +205,7 @@
 
         try {
             const encoder = new TextEncoder();
-            await writer.write(encoder.encode('強制停止\n'));
+            await writer.write(encoder.encode('STOP\n'));
             alert(`送信しました: 強制停止`);
         } catch (error) {
             console.error("送信エラー:", error);
